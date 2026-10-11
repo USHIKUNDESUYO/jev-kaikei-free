@@ -1,0 +1,21 @@
+[project]
+name = "jev-kaikei"
+version = "0.1.0"
+license = {file = "LICENSE"}
+authors = [{name = "Ushio Hoshino"}]
+description = "Jev会計: TypeSafe AI の判断モデル Jev でレシートを勘定科目に仕分けし、仕訳を作るローカルツール"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+jev-kaikei = "jev_kaikei.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["jev_kaikei"]
+
+[tool.setuptools.package-data]
+jev_kaikei = ["accounts.json", "static/*"]

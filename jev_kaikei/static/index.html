@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev会計</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="logo">Jev<span>会計</span></span><span class="tagline">魔界の帳簿</span>
+    <span id="modeBadge" class="badge badge-mock">起動中…</span>
+  </div>
+  <nav class="tabs">
+    <button class="tab is-active" data-screen="sort">選別の間</button>
+    <button class="tab" data-screen="review">裁きの間 <span id="tabReviewCount" class="pill">0</span></button>
+  </nav>
+  <div class="counters">
+    <div class="counter"><span class="counter-label">持ち込み</span><span id="cLoaded" class="counter-num">0</span></div>
+    <div class="counter counter-ok"><span class="counter-label">金庫入り</span><span id="cAuto" class="counter-num">0</span></div>
+    <div class="counter counter-ng"><span class="counter-label">裁き待ち</span><span id="cReview" class="counter-num">0</span></div>
+    <button id="btnSettings" class="btn btn-ghost" title="設定">⚙ 設定</button>
+  </div>
+</header>
+
+<!-- ============ 選別の間（仕分け）画面 ============ -->
+<main id="screen-sort" class="screen">
+  <section class="toolbar panel-frame">
+    <div class="toolbar-group">
+      <span class="toolbar-label">帳面を持ち込む</span>
+      <button id="btnFile" class="btn btn-primary">CSV / JSON</button>
+      <button id="btnDemo" class="btn">見本の帳面</button>
+      <button id="btnManual" class="btn">手で書く</button>
+      <button id="btnRetry" class="btn btn-warn" hidden>未判定を呼び戻す</button>
+      <input id="fileInput" type="file" accept=".csv,.json,.txt" hidden>
+    </div>
+    <div class="toolbar-group">
+      <button id="btnPause" class="btn btn-warn" title="Space">⏸ 一時停止</button>
+      <button id="btnStep" class="btn" title="止めたまま 1 枚だけ進める">次へ →</button>
+      <button id="btnReplay" class="btn btn-ghost">最初から</button>
+    </div>
+    <div class="toolbar-group">
+      <label class="slider">流れる速さ <input id="speed" type="range" min="0.5" max="4" step="0.25" value="1"><output id="speedOut">×1.00</output></label>
+      <label class="slider slider-th">金庫入りのしきい値 <input id="threshold" type="range" min="0.5" max="1" step="0.01" value="0.80"><output id="thresholdOut">0.80</output></label>
+    </div>
+  </section>
+
+  <section class="belt-area">
+    <div class="belt-wrap">
+      <div class="jev-node"><div class="jev-sprite px-imp"></div><span class="jev-name">帳簿の悪魔 Jev</span></div>
+      <div id="belt" class="belt">
+        <div class="belt-track"></div>
+        <div class="belt-gate"></div>
+        <div id="beltEmpty" class="belt-empty">帳面を持ち込むと羊皮紙が流れてきます</div>
+      </div>
+    </div>
+    <aside id="focus" class="focus panel-frame">
+      <div class="focus-empty">Jev の前に来た羊皮紙の見立てがここに出ます</div>
+    </aside>
+  </section>
+
+  <section id="buckets" class="buckets"></section>
+  <p class="usage" id="usage"></p>
+</main>
+
+<!-- ============ 裁きの間（レビュー）画面 ============ -->
+<main id="screen-review" class="screen" hidden>
+  <section class="review-head panel-frame">
+    <div class="legend">
+      <span class="dot dot-high"></span>高 0.95 以上
+      <span class="dot dot-mid"></span>中 しきい値以上
+      <span class="dot dot-low"></span>低 しきい値未満
+    </div>
+    <label class="toggle"><input id="reviewAll" type="checkbox"> 金庫入りも含めて全部見る</label>
+    <div class="counters">
+      <div class="counter"><span class="counter-label">裁き済み</span><span id="rDone" class="counter-num">0/0</span></div>
+      <div class="counter counter-warn"><span class="counter-label">手直し</span><span id="rFixed" class="counter-num">0</span></div>
+      <div class="counter counter-ng"><span class="counter-label">未裁き</span><span id="rLeft" class="counter-num">0</span></div>
+    </div>
+  </section>
+
+  <section class="review-body">
+    <div class="review-left panel-frame">
+      <div id="reviewEmpty" class="review-empty">裁きを待つ羊皮紙はありません。選別の間で帳面を持ち込んでください。</div>
+      <div id="reviewPane" hidden>
+        <div class="receipt-view">
+          <div class="receipt-paper">
+            <div class="receipt-head"><span class="chip">羊皮紙</span><span id="rvConf" class="chip chip-conf">—</span><span id="rvStatus" class="chip">—</span></div>
+            <dl class="receipt-fields">
+              <dt>日付</dt><dd id="rvDate"></dd>
+              <dt>支払先</dt><dd id="rvPayee"></dd>
+              <dt>金額</dt><dd id="rvAmount"></dd>
+              <dt>支払方法</dt><dd id="rvMethod"></dd>
+              <dt>摘要</dt><dd id="rvMemo"></dd>
+            </dl>
+          </div>
+          <div class="jev-opinion">
+            <div class="opinion-title">帳簿の悪魔の見立て</div>
+            <ol id="rvCandidates" class="cands"></ol>
+            <div id="rvTax" class="opinion-tax"></div>
+            <ul id="rvHints" class="hints"></ul>
+          </div>
+        </div>
+
+        <form id="entryForm" class="entry-form" autocomplete="off">
+          <div class="entry-col">
+            <div class="entry-side">借方</div>
+            <label>科目 <select id="fDebit"></select></label>
+            <label>税区分 <select id="fTax"></select></label>
+            <div class="row2">
+              <label>金額（税込）<input id="fAmount" type="number" min="0" step="1"></label>
+              <label>内消費税 <input id="fTaxAmount" type="text" readonly></label>
+            </div>
+          </div>
+          <div class="entry-col">
+            <div class="entry-side">貸方</div>
+            <label>科目 <select id="fCredit"></select></label>
+            <label>金額 <input id="fCreditAmount" type="text" readonly></label>
+            <label>摘要 <input id="fMemo" type="text"></label>
+          </div>
+        </form>
+
+        <div class="review-controls">
+          <button id="rvPrev" class="btn">← 前へ</button>
+          <button id="rvNext" class="btn">次へ →</button>
+          <button id="rvConfirm" class="btn btn-ok" title="Enter">裁いて次へ <kbd>Enter</kbd></button>
+          <button id="rvHold" class="btn btn-ghost" title="S">後で裁く <kbd>S</kbd></button>
+          <span id="rvPos" class="pos"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="review-right panel-frame">
+      <div class="confirmed-head">
+        <span>裁き済みの一覧</span>
+        <span class="confirmed-actions">
+          <button id="btnExportCsv" class="btn btn-primary btn-sm">仕訳CSV</button>
+          <button id="btnExportJson" class="btn btn-sm">JSON</button>
+          <button id="btnClear" class="btn btn-ghost btn-sm">全部クリア</button>
+        </span>
+      </div>
+      <ol id="confirmedList" class="confirmed-list"></ol>
+    </div>
+  </section>
+</main>
+
+<!-- ============ 設定 ============ -->
+<dialog id="dlgSettings">
+  <form method="dialog" class="dlg">
+    <h2>設定</h2>
+    <label>事業形態
+      <select id="sEntity">
+        <option value="kojin">個人事業主（事業主貸・事業主借）</option>
+        <option value="hojin">法人（役員貸付金・役員借入金）</option>
+      </select>
+    </label>
+    <label>売上の計上
+      <select id="sMode">
+        <option value="cash">入金時に売上高に計上</option>
+        <option value="accrual">請求時に計上済み（入金は売掛金の回収）</option>
+      </select>
+    </label>
+    <label>事業の内容（Jev への補足。例: 魔界の会計ライター、呪符デザイン）
+      <input id="sBusiness" type="text" placeholder="魔界の会計・税務の記事執筆、悪魔向けコミュニティの運営">
+    </label>
+    <label>支払方法が書かれていないときの既定
+      <select id="sMethod">
+        <option value="cash">現金</option>
+        <option value="bank">銀行口座</option>
+        <option value="card">クレジットカード</option>
+        <option value="private">個人立替</option>
+      </select>
+    </label>
+    <p class="dlg-note">事業形態と売上の計上を変えると、次に持ち込む帳面から反映されます。</p>
+    <div class="dlg-actions"><button value="cancel" class="btn">閉じる</button><button id="sSave" value="save" class="btn btn-primary">保存</button></div>
+  </form>
+</dialog>
+
+<!-- ============ 手で書く（手入力） ============ -->
+<dialog id="dlgManual">
+  <form method="dialog" class="dlg">
+    <h2>羊皮紙を手で書く</h2>
+    <div class="row2">
+      <label>日付 <input id="mDate" type="date"></label>
+      <label>区分
+        <select id="mDirection"><option value="out">支出</option><option value="in">収入</option></select>
+      </label>
+    </div>
+    <label>支払先 / 相手先 <input id="mPayee" type="text" placeholder="喫茶 溶岩豆" required></label>
+    <div class="row2">
+      <label>金額（税込） <input id="mAmount" type="number" min="1" step="1" required></label>
+      <label>支払方法
+        <select id="mMethod">
+          <option value="cash">現金</option>
+          <option value="bank">銀行口座</option>
+          <option value="card">クレジットカード</option>
+          <option value="private">個人立替</option>
+        </select>
+      </label>
+    </div>
+    <label>摘要 <input id="mMemo" type="text" placeholder="編集悪魔と打合せ"></label>
+    <div class="dlg-actions"><button value="cancel" class="btn" type="button" id="mCancel">閉じる</button><button id="mAdd" value="add" class="btn btn-primary">流す</button></div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<script src="/app.js"></script>
+</body>
+</html>

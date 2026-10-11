@@ -1,0 +1,31 @@
+{
+  "note": "デモ用のレシート・取引データ（魔界版）。amount は税込円。direction: out=支出 / in=収入。method: cash / bank / card / private。摘要には Jev が判断できる手がかりを入れてある",
+  "items": [
+    {"date": "2026-08-06", "payee": "魔界コンビニ ケルベロス3丁目店", "amount": 864, "memo": "打合せ用 魔力ドリンク", "method": "cash", "direction": "out"},
+    {"date": "2026-08-07", "payee": "文具屋 骸骨堂", "amount": 3410, "memo": "羊皮紙・呪符ファイル", "method": "cash", "direction": "out"},
+    {"date": "2026-08-08", "payee": "冥府急行", "amount": 13000, "memo": "取材 往復乗車券（魔王城まで）", "method": "card", "direction": "out"},
+    {"date": "2026-08-10", "payee": "喫茶 溶岩豆", "amount": 1320, "memo": "編集悪魔と打合せ", "method": "card", "direction": "out"},
+    {"date": "2026-08-12", "payee": "魔導書店 グリモワール", "amount": 4280, "memo": "書籍『魔界会計の地図』ほか", "method": "card", "direction": "out"},
+    {"date": "2026-08-12", "payee": "魔導機器店 雷鳴堂", "amount": 24800, "memo": "外付け魂ストレージ 2TB", "method": "card", "direction": "out"},
+    {"date": "2026-08-15", "payee": "冥界サーバー", "amount": 3300, "memo": "魔法陣サーバー 月額", "method": "card", "direction": "out"},
+    {"date": "2026-08-15", "payee": "魔導AI協会", "amount": 3200, "memo": "賢者AI 月額利用料", "method": "card", "direction": "out"},
+    {"date": "2026-08-18", "payee": "焼肉 業火亭", "amount": 18400, "memo": "取引先 魔王軍A社と会食 3名", "method": "card", "direction": "out"},
+    {"date": "2026-08-20", "payee": "魔王城電力", "amount": 8760, "memo": "8月分 電気代（魔窟事務所）", "method": "bank", "direction": "out"},
+    {"date": "2026-08-25", "payee": "バフォメットカード", "amount": 89530, "memo": "カード利用代金 引落し", "method": "bank", "direction": "out"},
+    {"date": "2026-08-25", "payee": "薬屋 毒蜜堂", "amount": 2780, "memo": "洗剤・ティッシュ", "method": "cash", "direction": "out"},
+    {"date": "2026-08-27", "payee": "時間貸し駐車場 竜の巣", "amount": 800, "memo": "取材時 駐車", "method": "cash", "direction": "out"},
+    {"date": "2026-08-28", "payee": "魔窟コワーキング 冥都", "amount": 15840, "memo": "9月分 月額利用料", "method": "bank", "direction": "out"},
+    {"date": "2026-08-29", "payee": "魔導機器店 林檎の魔女", "amount": 248000, "memo": "魔導ノート型端末", "method": "card", "direction": "out"},
+    {"date": "2026-08-30", "payee": "魔界年金機構", "amount": 17510, "memo": "国民年金 8月分（事業主本人）", "method": "bank", "direction": "out"},
+    {"date": "2026-08-30", "payee": "魔界コンビニ 冥都西口店", "amount": 1580, "memo": "", "method": "cash", "direction": "out"},
+    {"date": "2026-08-31", "payee": "洋菓子 業火亭", "amount": 2160, "memo": "取引先へ手土産", "method": "cash", "direction": "out"},
+    {"date": "2026-08-31", "payee": "魔導出版 グリモワール社", "amount": 66000, "memo": "原稿料 8月分", "method": "bank", "direction": "in"},
+    {"date": "2026-08-31", "payee": "悪魔銀行", "amount": 12, "memo": "普通預金利息", "method": "bank", "direction": "in"},
+    {"date": "2026-09-01", "payee": "振込 帳簿の悪魔", "amount": 100000, "memo": "個人口座から（事業主本人）", "method": "bank", "direction": "in"},
+    {"date": "2026-09-02", "payee": "外注市場 契約の門", "amount": 33000, "memo": "図版作成 外注（デザイン悪魔へ）", "method": "bank", "direction": "out"},
+    {"date": "2026-09-03", "payee": "魔界税務署", "amount": 41200, "memo": "消費税 中間納付", "method": "bank", "direction": "out"},
+    {"date": "2026-09-05", "payee": "食堂 骨の髄", "amount": 980, "memo": "", "method": "cash", "direction": "out"},
+    {"date": "2026-09-08", "payee": "魔界新聞社", "amount": 4900, "memo": "電子版 月額購読", "method": "card", "direction": "out"},
+    {"date": "2026-09-10", "payee": "魔導セミナー事務局", "amount": 11000, "memo": "魔界インボイス実務セミナー", "method": "bank", "direction": "out"}
+  ]
+}

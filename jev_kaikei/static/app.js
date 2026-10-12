@@ -612,17 +612,40 @@
   // import
   // ------------------------------------------------------------------
   function parseCsv(text) {
-    const rows = []; let row = [], cell = "", q = false;
+    const rows = [];
+    let row = [], cell = "", quoted = false, closed = false;
+    text = text.replace(/^\uFEFF/, "");
+    const fail = (reason) => {
+      const where = rows.length ? `データ${rows.length}件目` : "ヘッダー";
+      throw new Error(`CSVの${where}: ${reason}。ファイル全体を読み込んでいません`);
+    };
+    const finishCell = () => { row.push(cell); cell = ""; closed = false; };
+    const finishRow = () => {
+      finishCell();
+      if (row.some((v) => v.trim() !== "")) rows.push(row);
+      row = [];
+    };
     for (let i = 0; i < text.length; i++) {
       const c = text[i];
-      if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; }
-      else if (c === '"') q = true;
-      else if (c === ",") { row.push(cell); cell = ""; }
-      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(cell); rows.push(row); row = []; cell = ""; }
-      else cell += c;
+      if (quoted) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { cell += '"'; i++; }
+          else { quoted = false; closed = true; }
+        } else cell += c;
+      } else if (c === ",") finishCell();
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        finishRow();
+      } else if (closed) {
+        if (c !== " " && c !== "\t") fail("引用符を閉じた後に余分な文字があります");
+      } else if (c === '"') {
+        if (cell.trim() !== "") fail("引用符は項目の先頭に置いてください");
+        cell = ""; quoted = true;
+      } else cell += c;
     }
-    if (cell.length || row.length) { row.push(cell); rows.push(row); }
-    return rows.filter((r) => r.some((v) => v.trim() !== ""));
+    if (quoted) fail("引用符が閉じていません");
+    if (cell.length || row.length || closed) finishRow();
+    return rows;
   }
   const ALIASES = {
     date: ["日付", "取引日", "利用日", "date"],
@@ -675,6 +698,7 @@
     if (col.amount < 0 && col.out < 0 && col.in < 0) throw new Error("金額の列が見つかりません");
     const items = [];
     for (const [i, r] of rows.slice(1).entries()) {
+      if (r.length !== h.length) throw new Error(`CSVのデータ${i + 1}件目: 列数がヘッダーと一致しません（${h.length}列に対して${r.length}列）。ファイル全体を読み込んでいません`);
       const get = (i) => (i >= 0 ? (r[i] ?? "").trim() : "");
       let amount = NaN, direction = normDirection(get(col.direction));
       if (col.out >= 0 && toNumber(get(col.out)) > 0) { amount = toNumber(get(col.out)); direction = direction || "out"; }
@@ -689,12 +713,25 @@
   }
   function itemsFromJson(text) {
     const d = JSON.parse(text);
-    const arr = Array.isArray(d) ? d : d.items || d.records || [];
-    return arr.map((x) => ({
-      date: normDate(x.date || x.日付 || ""), payee: x.payee || x.支払先 || x.name || "", memo: x.memo || x.摘要 || x.description || "",
-      amount: toNumber(x.amount ?? x.金額 ?? 0), method: normMethod(x.method || x.支払方法 || "") || (["cash", "bank", "card", "private"].includes(x.method) ? x.method : S.settings.defaultMethod),
-      direction: normDirection(x.direction || x.区分 || "") || (x.direction === "in" ? "in" : "out"),
-    }));
+    const object = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
+    const arr = Array.isArray(d) ? d : object(d) ? (Object.hasOwn(d, "items") ? d.items : d.records) : null;
+    if (!Array.isArray(arr)) throw new Error("JSONは取引の配列、またはitems・recordsに配列を持つ形式にしてください");
+    return arr.map((x, i) => {
+      const fail = (reason) => { throw new Error(`JSONのデータ${i + 1}件目: ${reason}。ファイル全体を読み込んでいません`); };
+      if (!object(x)) fail("取引はオブジェクトにしてください");
+      const textFields = ["date", "日付", "payee", "支払先", "name", "memo", "摘要", "description", "method", "支払方法", "direction", "区分"];
+      for (const key of textFields) {
+        if (x[key] != null && typeof x[key] !== "string") fail(`${key}は文字列にしてください`);
+      }
+      for (const key of ["amount", "金額"]) {
+        if (x[key] != null && typeof x[key] !== "string" && typeof x[key] !== "number") fail(`${key}は数値または文字列にしてください`);
+      }
+      return {
+        date: normDate(x.date || x.日付 || ""), payee: x.payee || x.支払先 || x.name || "", memo: x.memo || x.摘要 || x.description || "",
+        amount: toNumber(x.amount ?? x.金額 ?? 0), method: normMethod(x.method || x.支払方法 || "") || (["cash", "bank", "card", "private"].includes(x.method) ? x.method : S.settings.defaultMethod),
+        direction: normDirection(x.direction || x.区分 || "") || (x.direction === "in" ? "in" : "out"),
+      };
+    });
   }
   function restoreSavedRecords(data, sourceLabel) {
     if (S.judging || S.riding || S.queue.length) throw new Error("判定と表示が終わってから保存JSONを読み込んでください");

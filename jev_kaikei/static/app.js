@@ -679,6 +679,43 @@
       direction: normDirection(x.direction || x.区分 || "") || (x.direction === "in" ? "in" : "out"),
     }));
   }
+  function restoreSavedRecords(data, sourceLabel) {
+    if (S.judging || S.riding || S.queue.length) throw new Error("判定と表示が終わってから保存JSONを読み込んでください");
+    const object = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
+    const money = (x) => Number.isSafeInteger(x) && x >= 0;
+    // Validate the entire file before changing existing work or allocating IDs.
+    for (const [i, row] of data.records.entries()) {
+      const fail = () => { throw new Error(`保存JSONの${i + 1}件目が不正です。現在の取引は変更していません`); };
+      if (!object(row) || !object(row.item)) fail();
+      const it = row.item;
+      if (!money(it.amount) || it.amount === 0 || !["in", "out"].includes(it.direction)) fail();
+      if (["date", "payee", "memo", "method"].some((key) => typeof it[key] !== "string")) fail();
+      if ((row.jev != null) !== (row.entry != null)) fail();
+      if (row.jev != null && (!object(row.jev) || !Number.isFinite(row.jev.confidence) || row.jev.confidence < 0 || row.jev.confidence > 1)) fail();
+      if (row.entry != null) {
+        const e = row.entry;
+        if (!row.jev || !object(e) || !["auto", "review", "confirmed", "hold"].includes(e.status) || !money(e.amount)) fail();
+        if (["account", "counter", "taxCode", "memo"].some((key) => typeof e[key] !== "string")) fail();
+      }
+    }
+    if (!data.records.length) { toast("保存JSONに復元する取引がありません", true); return; }
+    for (const row of data.records) {
+      const id = uid();
+      S.items.push({ ...row.item, id, source: sourceLabel });
+      if (row.jev != null) S.results[id] = { ...row.jev, id };
+      if (row.entry != null) S.entries[id] = { ...row.entry };
+    }
+    save(); updateCounters(); renderBuckets(); renderStatus();
+    if (S.screen === "review") renderReview();
+    toast(`${data.records.length}件の取引と確認記録を復元しました。設定は現在のままです`);
+  }
+  async function importJson(text, sourceLabel) {
+    const data = JSON.parse(text);
+    const saved = data && !Array.isArray(data) && Array.isArray(data.records)
+      && (data.records.some((row) => row && Object.hasOwn(row, "item")) || (Object.hasOwn(data, "settings") && Object.hasOwn(data, "threshold")));
+    if (saved) restoreSavedRecords(data, sourceLabel);
+    else await ingest(itemsFromJson(text), sourceLabel);
+  }
   async function readFileText(file) {
     const buf = await file.arrayBuffer();
     try { return new TextDecoder("utf-8", { fatal: true }).decode(buf); }
@@ -720,8 +757,8 @@
       if (!file) return;
       try {
         const text = await readFileText(file);
-        const items = file.name.toLowerCase().endsWith(".json") ? itemsFromJson(text) : itemsFromCsv(text);
-        await ingest(items, file.name);
+        if (file.name.toLowerCase().endsWith(".json")) await importJson(text, file.name);
+        else await ingest(itemsFromCsv(text), file.name);
       } catch (e) { toast(`読み込みに失敗: ${e.message}`, true); }
     });
     $("btnDemo").addEventListener("click", async () => {

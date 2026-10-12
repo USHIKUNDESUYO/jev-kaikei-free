@@ -196,8 +196,18 @@
     }
   }
 
+  function supportedAmount(amount) {
+    return Number.isFinite(amount) && Number.isSafeInteger(Math.round(amount));
+  }
+  const AMOUNT_ERROR = "金額が大きすぎます。9,007,199,254,740,991円以内の数値に直してください";
+
   async function ingest(rawItems, sourceLabel) {
     if (!rawItems.length) { toast("読み込める行がありませんでした", true); return; }
+    // Validate the entire batch before allocating IDs or changing existing work.
+    for (const [i, x] of rawItems.entries()) {
+      const amount = Number(x.amount);
+      if (!Number.isNaN(amount) && !supportedAmount(amount)) throw new Error(`${i + 1}件目: ${AMOUNT_ERROR}`);
+    }
     const items = rawItems.map((x) => ({
       id: uid(), date: x.date || "", payee: x.payee || "", amount: Math.abs(Math.round(Number(x.amount) || 0)),
       memo: x.memo || "", method: x.method || S.settings.defaultMethod, direction: x.direction === "in" ? "in" : "out",
@@ -510,6 +520,7 @@
     const counterSel = side === "out" ? $("fCredit") : $("fDebit");
     const acc = accountsFor(side).find((a) => a.code === accSel.value);
     const amount = Math.round(Number($("fAmount").value) || 0);
+    if (!supportedAmount(amount)) { toast(AMOUNT_ERROR, true); return; }
     if (!acc || amount <= 0) { toast("科目と金額を確認してください", true); return; }
     const modified = acc.code !== r.account_code || $("fTax").value !== r.tax_code || counterSel.value !== r.counter_account || amount !== item.amount;
     Object.assign(e, {
@@ -663,13 +674,14 @@
     if (col.payee < 0) throw new Error("支払先（または摘要）の列が見つかりません");
     if (col.amount < 0 && col.out < 0 && col.in < 0) throw new Error("金額の列が見つかりません");
     const items = [];
-    for (const r of rows.slice(1)) {
+    for (const [i, r] of rows.slice(1).entries()) {
       const get = (i) => (i >= 0 ? (r[i] ?? "").trim() : "");
       let amount = NaN, direction = normDirection(get(col.direction));
       if (col.out >= 0 && toNumber(get(col.out)) > 0) { amount = toNumber(get(col.out)); direction = direction || "out"; }
       else if (col.in >= 0 && toNumber(get(col.in)) > 0) { amount = toNumber(get(col.in)); direction = direction || "in"; }
       else amount = toNumber(get(col.amount));
-      if (!Number.isFinite(amount) || amount === 0) continue;
+      if (Number.isNaN(amount) || amount === 0) continue;
+      if (!supportedAmount(amount)) throw new Error(`CSVのデータ${i + 1}件目: ${AMOUNT_ERROR}`);
       if (!direction) direction = amount < 0 ? "out" : "out";
       items.push({ date: normDate(get(col.date)), payee: get(col.payee), memo: get(col.memo), amount: Math.abs(amount), method: normMethod(get(col.method)) || S.settings.defaultMethod, direction });
     }
@@ -776,12 +788,14 @@
       try { const d = await (await fetch("/api/sample")).json(); await ingest(d.items || [], "demo"); }
       catch (e) { toast(`見本の帳面を取得できません: ${e.message}`, true); }
     });
-    $("btnManual").addEventListener("click", () => { $("mDate").value ||= new Date().toISOString().slice(0, 10); $("dlgManual").showModal(); });
+    $("btnManual").addEventListener("click", () => { $("manualAmountError").hidden = true; $("mDate").value ||= new Date().toISOString().slice(0, 10); $("dlgManual").showModal(); });
+    $("mAmount").addEventListener("input", () => { $("manualAmountError").hidden = true; });
     $("mCancel").addEventListener("click", () => $("dlgManual").close());
     $("dlgManual").querySelector("form").addEventListener("submit", (ev) => {
       if (ev.submitter?.value !== "add") return;
       ev.preventDefault();
       const item = { date: $("mDate").value, payee: $("mPayee").value.trim(), amount: toNumber($("mAmount").value), memo: $("mMemo").value.trim(), method: $("mMethod").value, direction: $("mDirection").value };
+      if (!supportedAmount(item.amount) && !Number.isNaN(item.amount)) { $("manualAmountError").textContent = AMOUNT_ERROR; $("manualAmountError").hidden = false; return; }
       if (!item.payee || !(item.amount > 0)) { toast("支払先と金額を入れてください", true); return; }
       $("dlgManual").close(); $("mPayee").value = ""; $("mAmount").value = ""; $("mMemo").value = "";
       ingest([item], "manual");

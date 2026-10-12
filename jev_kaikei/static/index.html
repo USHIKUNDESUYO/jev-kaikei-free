@@ -197,7 +197,7 @@
     </div>
     <label>支払先 / 相手先 <input id="mPayee" type="text" placeholder="喫茶 溶岩豆" required></label>
     <div class="row2">
-      <label>金額（税込） <input id="mAmount" type="number" min="1" step="1" required></label>
+      <label>金額（税込） <input id="mAmount" aria-describedby="manualAmountError" type="number" min="1" step="1" required></label>
       <label>支払方法
         <select id="mMethod">
           <option value="cash">現金</option>
@@ -207,6 +207,7 @@
         </select>
       </label>
     </div>
+    <p id="manualAmountError" role="alert" hidden></p>
     <label>摘要 <input id="mMemo" type="text" placeholder="編集悪魔と打合せ"></label>
     <div class="dlg-actions"><button value="cancel" class="btn" type="button" id="mCancel">閉じる</button><button id="mAdd" value="add" class="btn btn-primary">流す</button></div>
   </form>

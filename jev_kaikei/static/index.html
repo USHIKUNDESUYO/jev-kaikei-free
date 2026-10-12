@@ -24,6 +24,14 @@
   </div>
 </header>
 
+<section id="storageWarning" class="storage-warning panel-frame" role="alert" hidden>
+  <p>ブラウザーの自動保存に失敗しました。このタブの取引は残っていますが、再読み込みすると今回の変更が失われる可能性があります。閉じる前にJSONを保存してください。</p>
+  <div class="storage-actions">
+    <button id="btnStorageJson" class="btn btn-primary">JSONを保存</button>
+    <button id="btnStorageRetry" class="btn">自動保存を再試行</button>
+  </div>
+</section>
+
 <!-- ============ 選別の間（仕分け）画面 ============ -->
 <main id="screen-sort" class="screen">
   <section class="toolbar panel-frame">

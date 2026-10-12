@@ -76,7 +76,12 @@
         items: S.items, results: S.results, entries: S.entries, settings: S.settings,
         threshold: S.threshold, speed: S.speed, usage: S.usage,
       }));
-    } catch (_) { /* private mode など */ }
+      $("storageWarning").hidden = true;
+      return true;
+    } catch (_) {
+      $("storageWarning").hidden = false;
+      return false;
+    }
   }
   function restore() {
     try {
@@ -705,9 +710,10 @@
       if (row.jev != null) S.results[id] = { ...row.jev, id };
       if (row.entry != null) S.entries[id] = { ...row.entry };
     }
-    save(); updateCounters(); renderBuckets(); renderStatus();
+    const persisted = save(); updateCounters(); renderBuckets(); renderStatus();
     if (S.screen === "review") renderReview();
-    toast(`${data.records.length}件の取引と確認記録を復元しました。設定は現在のままです`);
+    if (persisted) toast(`${data.records.length}件の取引と確認記録を復元しました。設定は現在のままです`);
+    else toast(`${data.records.length}件をこのタブへ復元しましたが、自動保存に失敗しました。閉じる前にJSONを保存してください`, true);
   }
   async function importJson(text, sourceLabel) {
     const data = JSON.parse(text);
@@ -750,6 +756,11 @@
   }
 
   function bind() {
+    $("btnStorageJson").addEventListener("click", exportJson);
+    $("btnStorageRetry").addEventListener("click", () => {
+      if (save()) toast("ブラウザーの自動保存が完了しました");
+      else toast("自動保存に失敗しました。閉じる前にJSONを保存してください", true);
+    });
     document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => showScreen(t.dataset.screen)));
     $("btnFile").addEventListener("click", () => $("fileInput").click());
     $("fileInput").addEventListener("change", async (ev) => {

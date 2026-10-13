@@ -720,8 +720,30 @@
     }
     return items;
   }
-  function itemsFromJson(text) {
-    const d = JSON.parse(text);
+  function parseUniqueJson(text) {
+    // Native parsing checks JSON syntax; scan names before any import can mutate work.
+    const data = JSON.parse(text);
+    const frames = [];
+    const tokens = /"(?:\\[\s\S]|[^"\\])*"|[{}\[\],:]/g;
+    for (const match of text.matchAll(tokens)) {
+      const token = match[0];
+      if (token === "{") frames.push({ keys: new Set(), expectingKey: true });
+      else if (token === "[") frames.push(null);
+      else if (token === "}" || token === "]") frames.pop();
+      else {
+        const object = frames[frames.length - 1];
+        if (object && token === ",") object.expectingKey = true;
+        else if (object && object.expectingKey && token.startsWith('"')) {
+          const key = JSON.parse(token);
+          if (object.keys.has(key)) throw new Error(`JSONの項目名${JSON.stringify(key)}が重複しています。元ファイルを直してください。現在の取引は変更していません`);
+          object.keys.add(key); object.expectingKey = false;
+        }
+      }
+    }
+    return data;
+  }
+  function itemsFromJson(text, data = parseUniqueJson(text)) {
+    const d = data;
     const object = (x) => x !== null && typeof x === "object" && !Array.isArray(x);
     const arr = Array.isArray(d) ? d : object(d) ? (Object.hasOwn(d, "items") ? d.items : d.records) : null;
     if (!Array.isArray(arr)) throw new Error("JSONは取引の配列、またはitems・recordsに配列を持つ形式にしてください");
@@ -775,11 +797,11 @@
     else toast(`${data.records.length}件をこのタブへ復元しましたが、自動保存に失敗しました。閉じる前にJSONを保存してください`, true);
   }
   async function importJson(text, sourceLabel) {
-    const data = JSON.parse(text);
+    const data = parseUniqueJson(text);
     const saved = data && !Array.isArray(data) && Array.isArray(data.records)
       && (data.records.some((row) => row && Object.hasOwn(row, "item")) || (Object.hasOwn(data, "settings") && Object.hasOwn(data, "threshold")));
     if (saved) restoreSavedRecords(data, sourceLabel);
-    else await ingest(itemsFromJson(text), sourceLabel);
+    else await ingest(itemsFromJson(text, data), sourceLabel);
   }
   async function readFileText(file) {
     const buf = await file.arrayBuffer();

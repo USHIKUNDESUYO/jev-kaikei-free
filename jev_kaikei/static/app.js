@@ -804,7 +804,7 @@
       if (row.jev != null && (!object(row.jev) || !Number.isFinite(row.jev.confidence) || row.jev.confidence < 0 || row.jev.confidence > 1)) fail();
       if (row.entry != null) {
         const e = row.entry;
-        if (!row.jev || !object(e) || !["auto", "review", "confirmed", "hold"].includes(e.status) || !money(e.amount)) fail();
+        if (!row.jev || !object(e) || !["auto", "review", "confirmed", "hold"].includes(e.status) || (!money(e.amount) || e.amount === 0)) fail();
         if (["account", "counter", "taxCode", "memo"].some((key) => typeof e[key] !== "string")) fail();
       }
     }

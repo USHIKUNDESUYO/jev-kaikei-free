@@ -720,8 +720,12 @@
       if (r.length !== h.length) throw new Error(`CSVのデータ${i + 1}件目: 列数がヘッダーと一致しません（${h.length}列に対して${r.length}列）。ファイル全体を読み込んでいません`);
       const get = (i) => (i >= 0 ? (r[i] ?? "").trim() : "");
       let amount = NaN, direction = normDirection(get(col.direction));
-      if (col.out >= 0 && toNumber(get(col.out)) > 0) { amount = toNumber(get(col.out)); direction = direction || "out"; }
-      else if (col.in >= 0 && toNumber(get(col.in)) > 0) { amount = toNumber(get(col.in)); direction = direction || "in"; }
+      const withdrawal = toNumber(get(col.out)), deposit = toNumber(get(col.in));
+      if (col.out >= 0 && col.in >= 0 && withdrawal > 0 && deposit > 0) {
+        throw new Error(`CSVのデータ${i + 1}件目: 出金と入金の両方に正の金額があります。元ファイルで金額と収支を確認してください。ファイル全体を読み込んでいません。現在の取引は変更していません`);
+      }
+      if (col.out >= 0 && withdrawal > 0) { amount = withdrawal; direction = direction || "out"; }
+      else if (col.in >= 0 && deposit > 0) { amount = deposit; direction = direction || "in"; }
       else amount = toNumber(get(col.amount));
       if (Number.isNaN(amount) || amount === 0) continue;
       if (!supportedAmount(amount)) throw new Error(`CSVのデータ${i + 1}件目: ${AMOUNT_ERROR}`);

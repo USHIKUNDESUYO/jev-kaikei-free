@@ -776,6 +776,10 @@
       }
       for (const key of ["amount", "金額"]) {
         if (x[key] != null && typeof x[key] !== "string" && typeof x[key] !== "number") fail(`${key}は数値または文字列にしてください`);
+        if (x[key] != null && String(x[key]).trim() !== "" && !Number.isFinite(toNumber(x[key]))) {
+          if (!Number.isNaN(toNumber(x[key]))) fail(`${key}: ${AMOUNT_ERROR}。現在の取引は変更していません`);
+          fail(`金額の項目${JSON.stringify(key)}を数値にできません。元ファイルで金額を確認してください。現在の取引は変更していません`);
+        }
       }
       return {
         date: normDate(x.date || x.日付 || "", `JSONのデータ${i + 1}件目`), payee: x.payee || x.支払先 || x.name || "", memo: x.memo || x.摘要 || x.description || "",

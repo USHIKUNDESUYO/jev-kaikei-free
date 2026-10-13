@@ -719,6 +719,12 @@
     for (const [i, r] of rows.slice(1).entries()) {
       if (r.length !== h.length) throw new Error(`CSVのデータ${i + 1}件目: 列数がヘッダーと一致しません（${h.length}列に対して${r.length}列）。ファイル全体を読み込んでいません`);
       const get = (i) => (i >= 0 ? (r[i] ?? "").trim() : "");
+      for (const index of new Set([col.amount, col.out, col.in])) {
+        if (index >= 0 && get(index) !== "" && !Number.isFinite(toNumber(get(index)))) {
+          if (!Number.isNaN(toNumber(get(index)))) throw new Error(`CSVのデータ${i + 1}件目: ${JSON.stringify(h[index])}: ${AMOUNT_ERROR}。ファイル全体を読み込んでいません。現在の取引は変更していません`);
+          throw new Error(`CSVのデータ${i + 1}件目: ${JSON.stringify(h[index])}の金額を数値にできません。元ファイルで金額を確認してください。ファイル全体を読み込んでいません。現在の取引は変更していません`);
+        }
+      }
       let amount = NaN, direction = normDirection(get(col.direction));
       const withdrawal = toNumber(get(col.out)), deposit = toNumber(get(col.in));
       if (col.out >= 0 && col.in >= 0 && withdrawal > 0 && deposit > 0) {

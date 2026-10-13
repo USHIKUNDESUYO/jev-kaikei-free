@@ -206,6 +206,7 @@
     // Validate the entire batch before allocating IDs or changing existing work.
     for (const [i, x] of rawItems.entries()) {
       const amount = Number(x.amount);
+      normDate(x.date, `${i + 1}件目`);
       if (!Number.isNaN(amount) && !supportedAmount(amount)) throw new Error(`${i + 1}件目: ${AMOUNT_ERROR}`);
     }
     const items = rawItems.map((x) => ({
@@ -682,10 +683,18 @@
     if (/支出|出金|out|expense|withdraw/i.test(t)) return "out";
     return "";
   }
-  function normDate(s) {
+  function normDate(s, label = "") {
     const t = String(s || "").trim().replace(/[年月]/g, "-").replace(/日/, "").replace(/\//g, "-");
     const m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-    if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    if (m) {
+      const year = Number(m[1]), month = Number(m[2]), day = Number(m[3]);
+      const leap = year % 400 === 0 || (year % 4 === 0 && year % 100 !== 0);
+      const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+      if (year < 1 || month < 1 || month > 12 || day < 1 || day > days[month - 1]) {
+        throw new Error(`${label ? label + ": " : ""}日付が存在しません。年・月・日を確認してください。現在の取引は変更していません`);
+      }
+      return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    }
     return String(s || "").trim();
   }
   function itemsFromCsv(text) {
@@ -707,7 +716,7 @@
       if (Number.isNaN(amount) || amount === 0) continue;
       if (!supportedAmount(amount)) throw new Error(`CSVのデータ${i + 1}件目: ${AMOUNT_ERROR}`);
       if (!direction) direction = amount < 0 ? "out" : "out";
-      items.push({ date: normDate(get(col.date)), payee: get(col.payee), memo: get(col.memo), amount: Math.abs(amount), method: normMethod(get(col.method)) || S.settings.defaultMethod, direction });
+      items.push({ date: normDate(get(col.date), `CSVのデータ${i + 1}件目`), payee: get(col.payee), memo: get(col.memo), amount: Math.abs(amount), method: normMethod(get(col.method)) || S.settings.defaultMethod, direction });
     }
     return items;
   }
@@ -727,7 +736,7 @@
         if (x[key] != null && typeof x[key] !== "string" && typeof x[key] !== "number") fail(`${key}は数値または文字列にしてください`);
       }
       return {
-        date: normDate(x.date || x.日付 || ""), payee: x.payee || x.支払先 || x.name || "", memo: x.memo || x.摘要 || x.description || "",
+        date: normDate(x.date || x.日付 || "", `JSONのデータ${i + 1}件目`), payee: x.payee || x.支払先 || x.name || "", memo: x.memo || x.摘要 || x.description || "",
         amount: toNumber(x.amount ?? x.金額 ?? 0), method: normMethod(x.method || x.支払方法 || "") || (["cash", "bank", "card", "private"].includes(x.method) ? x.method : S.settings.defaultMethod),
         direction: normDirection(x.direction || x.区分 || "") || (x.direction === "in" ? "in" : "out"),
       };
@@ -744,6 +753,7 @@
       const it = row.item;
       if (!money(it.amount) || it.amount === 0 || !["in", "out"].includes(it.direction)) fail();
       if (["date", "payee", "memo", "method"].some((key) => typeof it[key] !== "string")) fail();
+      normDate(it.date, `保存JSONの${i + 1}件目`);
       if ((row.jev != null) !== (row.entry != null)) fail();
       if (row.jev != null && (!object(row.jev) || !Number.isFinite(row.jev.confidence) || row.jev.confidence < 0 || row.jev.confidence > 1)) fail();
       if (row.entry != null) {

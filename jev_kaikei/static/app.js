@@ -802,6 +802,15 @@
       normDate(it.date, `保存JSONの${i + 1}件目`);
       if ((row.jev != null) !== (row.entry != null)) fail();
       if (row.jev != null && (!object(row.jev) || !Number.isFinite(row.jev.confidence) || row.jev.confidence < 0 || row.jev.confidence > 1)) fail();
+      if (row.jev != null) {
+        const r = row.jev;
+        const failField = (key) => { throw new Error(`保存JSONの${i + 1}件目: ${key}の形式が不正です。現在の取引は変更していません`); };
+        for (const key of ["candidates", "hints"]) {
+          if (Object.hasOwn(r, key) && !Array.isArray(r[key])) failField(key);
+        }
+        if ((r.candidates || []).some((c) => !object(c) || typeof c.account !== "string" || !Number.isFinite(c.p) || c.p < 0 || c.p > 1)) failField("candidates");
+        if ((r.hints || []).some((h) => typeof h !== "string")) failField("hints");
+      }
       if (row.entry != null) {
         const e = row.entry;
         if (!row.jev || !object(e) || !["auto", "review", "confirmed", "hold"].includes(e.status) || (!money(e.amount) || e.amount === 0)) fail();
@@ -812,7 +821,7 @@
     for (const row of data.records) {
       const id = uid();
       S.items.push({ ...row.item, id, source: sourceLabel });
-      if (row.jev != null) S.results[id] = { ...row.jev, id };
+      if (row.jev != null) S.results[id] = { ...row.jev, id, candidates: row.jev.candidates || [], hints: row.jev.hints || [] };
       if (row.entry != null) S.entries[id] = { ...row.entry };
     }
     const persisted = save(); updateCounters(); renderBuckets(); renderStatus();

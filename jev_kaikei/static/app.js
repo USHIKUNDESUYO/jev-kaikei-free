@@ -699,8 +699,18 @@
   }
   function itemsFromCsv(text) {
     const rows = parseCsv(text);
-    if (rows.length < 2) return [];
+    if (!rows.length) return [];
     const h = rows[0];
+    const names = new Map();
+    for (const [i, name] of h.entries()) {
+      const normalized = name.replace(/[\s　"]/g, "").toLowerCase();
+      if (!normalized) continue;
+      if (names.has(normalized)) {
+        throw new Error(`CSVのヘッダー: 項目名${JSON.stringify(name.trim())}が${names.get(normalized) + 1}列目と${i + 1}列目で重複しています。列名を直してください。現在の取引は変更していません`);
+      }
+      names.set(normalized, i);
+    }
+    if (rows.length < 2) return [];
     const col = Object.fromEntries(Object.entries(ALIASES).map(([k, v]) => [k, findCol(h, v)]));
     if (col.payee < 0 && col.memo >= 0) { col.payee = col.memo; col.memo = -1; }
     if (col.payee < 0) throw new Error("支払先（または摘要）の列が見つかりません");

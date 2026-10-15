@@ -730,6 +730,9 @@
       if (col.out >= 0 && col.in >= 0 && withdrawal > 0 && deposit > 0) {
         throw new Error(`CSVのデータ${i + 1}件目: 出金と入金の両方に正の金額があります。元ファイルで金額と収支を確認してください。ファイル全体を読み込んでいません。現在の取引は変更していません`);
       }
+      if ((col.out >= 0 && withdrawal > 0 && direction === "in") || (col.in >= 0 && deposit > 0 && direction === "out")) {
+        throw new Error(`CSVのデータ${i + 1}件目: 出金・入金の列と区分の収支が矛盾しています。元ファイルで列と区分をそろえてください。ファイル全体を読み込んでいません。現在の取引は変更していません`);
+      }
       if (col.out >= 0 && withdrawal > 0) { amount = withdrawal; direction = direction || "out"; }
       else if (col.in >= 0 && deposit > 0) { amount = deposit; direction = direction || "in"; }
       else amount = toNumber(get(col.amount));
